@@ -140,6 +140,18 @@ const program = Effect.gen(function* () {
   }
   console.log("reasoning effort sanitize ok:", parsed.reasoning.effort)
 
+  // Patched @effect/ai-openai schema must accept effort "max" directly
+  const { Reasoning } = await import("@effect/ai-openai/Generated")
+  const { Schema } = await import("effect")
+  const decoded = Schema.decodeUnknownSync(Reasoning)({
+    effort: "max",
+    summary: null,
+  })
+  if (decoded.effort !== "max") {
+    return yield* Effect.fail(new Error("ReasoningEffortEnum missing max"))
+  }
+  console.log("schema accepts effort max ok")
+
   // unused typed snapshot reference for compile confidence
   const _s: NovelSnapshot = snap
   void _s

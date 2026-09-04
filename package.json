@@ -5,6 +5,7 @@
   "type": "module",
   "module": "src/main.tsx",
   "scripts": {
+    "postinstall": "bun run scripts/patch-effect-ai-openai.ts",
     "start": "bun run src/main.tsx",
     "dev": "bun run --watch src/main.tsx",
     "typecheck": "bunx tsc --noEmit",

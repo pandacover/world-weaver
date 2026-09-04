@@ -1,8 +1,8 @@
 import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
-import { FetchHttpClient } from "@effect/platform"
 import type { LanguageModel } from "@effect/ai/LanguageModel"
 import { Layer, Redacted } from "effect"
 import type { ProviderConfig } from "../provider.ts"
+import { SanitizedFetchHttpClientLive } from "../http-client.ts"
 import { withReasoningEffortSanitizer } from "../sanitize-response.ts"
 
 export const openaiCompatibleLayer = (
@@ -16,7 +16,7 @@ export const openaiCompatibleLayer = (
     apiKey: config.apiKey ? Redacted.make(config.apiKey) : undefined,
     apiUrl: config.baseUrl,
     transformClient: withReasoningEffortSanitizer,
-  }).pipe(Layer.provide(FetchHttpClient.layer))
+  }).pipe(Layer.provide(SanitizedFetchHttpClientLive))
 
   return OpenAiLanguageModel.layer({ model: config.model }).pipe(
     Layer.provide(client),
