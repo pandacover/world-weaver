@@ -1,34 +1,50 @@
 /**
  * @effect/ai-openai 0.41.0 rejects Responses API `reasoning.effort: "max"`.
- * Patch the generated schema (src + compiled) until upstream allows it.
+ * Patch generated schema (src, compiled JS, and .d.ts) until upstream allows it.
  */
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs"
 import { join } from "node:path"
 
 const pkgRoot = join(import.meta.dir, "..", "node_modules", "@effect", "ai-openai")
 
-const FROM = 'S.Literal("none","minimal","low","medium","high")'
-const TO = 'S.Literal("none","minimal","low","medium","high","max")'
-const FROM_SRC = 'S.Literal("none", "minimal", "low", "medium", "high")'
-const TO_SRC = 'S.Literal("none", "minimal", "low", "medium", "high", "max")'
-
-const patchFile = (path: string, from: string, to: string): boolean => {
-  if (!existsSync(path)) return false
-  const before = readFileSync(path, "utf8")
-  if (!before.includes(from)) {
-    // Already patched or different formatting
-    return before.includes(to) || before.includes('"max"')
-  }
-  writeFileSync(path, before.split(from).join(to))
-  return true
-}
+const replacements: Array<[string, string]> = [
+  // Compiled / minified-ish
+  [
+    'S.Literal("none","minimal","low","medium","high")',
+    'S.Literal("none","minimal","low","medium","high","max")',
+  ],
+  // Source
+  [
+    'S.Literal("none", "minimal", "low", "medium", "high")',
+    'S.Literal("none", "minimal", "low", "medium", "high", "max")',
+  ],
+  // .d.ts Literal generics
+  [
+    'S.Literal<["none", "minimal", "low", "medium", "high"]>',
+    'S.Literal<["none", "minimal", "low", "medium", "high", "max"]>',
+  ],
+  // .d.ts union members
+  [
+    '"none" | "minimal" | "low" | "medium" | "high"',
+    '"none" | "minimal" | "low" | "medium" | "high" | "max"',
+  ],
+]
 
 const walk = (dir: string, files: string[] = []): string[] => {
   if (!existsSync(dir)) return files
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name)
     if (entry.isDirectory()) walk(p, files)
-    else if (entry.name.startsWith("Generated.")) files.push(p)
+    else if (
+      entry.name.startsWith("Generated.") &&
+      (entry.name.endsWith(".ts") ||
+        entry.name.endsWith(".js") ||
+        entry.name.endsWith(".d.ts") ||
+        entry.name.endsWith(".mjs") ||
+        entry.name.endsWith(".cjs"))
+    ) {
+      files.push(p)
+    }
   }
   return files
 }
@@ -38,23 +54,21 @@ if (!existsSync(pkgRoot)) {
   process.exit(0)
 }
 
-let patched = 0
+let patchedFiles = 0
 for (const file of walk(pkgRoot)) {
-  const isSrc = file.includes(`${join("src", "Generated")}`) || file.endsWith(`${join("src", "Generated.ts")}`)
-  const ok = isSrc
-    ? patchFile(file, FROM_SRC, TO_SRC) || patchFile(file, FROM, TO)
-    : patchFile(file, FROM, TO) || patchFile(file, FROM_SRC, TO_SRC)
-  if (ok) {
-    patched++
-    console.log("[patch-effect-ai-openai] patched", file.replace(pkgRoot + "/", ""))
+  let text = readFileSync(file, "utf8")
+  let changed = false
+  for (const [from, to] of replacements) {
+    if (text.includes(from)) {
+      text = text.split(from).join(to)
+      changed = true
+    }
+  }
+  if (changed) {
+    writeFileSync(file, text)
+    patchedFiles++
+    console.log("[patch-effect-ai-openai] patched", file.slice(pkgRoot.length + 1))
   }
 }
 
-if (patched === 0) {
-  console.warn(
-    "[patch-effect-ai-openai] no Generated files matched; check @effect/ai-openai layout",
-  )
-  process.exit(0)
-}
-
-console.log(`[patch-effect-ai-openai] done (${patched} file(s))`)
+console.log(`[patch-effect-ai-openai] done (${patchedFiles} file(s))`)
