@@ -1,7 +1,8 @@
 /**
  * Smoke test: SQLite create/list + provider layer construction (no live LLM call).
  */
-import { Effect, Layer, ManagedRuntime } from "effect"
+import { Effect, Layer, ManagedRuntime, Schema } from "effect"
+import { Reasoning } from "@effect/ai-openai/Generated"
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -141,8 +142,6 @@ const program = Effect.gen(function* () {
   console.log("reasoning effort sanitize ok:", parsed.reasoning.effort)
 
   // Patched @effect/ai-openai schema must accept effort "max" directly
-  const { Reasoning } = await import("@effect/ai-openai/Generated")
-  const { Schema } = await import("effect")
   const decoded = Schema.decodeUnknownSync(Reasoning)({
     effort: "max",
     summary: null,
