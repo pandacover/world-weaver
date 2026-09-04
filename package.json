@@ -1,0 +1,30 @@
+{
+  "name": "world-weaver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "module": "src/main.tsx",
+  "scripts": {
+    "postinstall": "bun run scripts/patch-effect-ai-openai.ts",
+    "start": "bun run src/main.tsx",
+    "dev": "bun run --watch src/main.tsx",
+    "typecheck": "bunx tsc --noEmit",
+    "smoke": "bun run src/smoke.ts"
+  },
+  "dependencies": {
+    "@effect/ai": "^0.37.0",
+    "@effect/ai-openai": "^0.41.0",
+    "@effect/platform": "^0.97.1",
+    "@effect/platform-bun": "^0.91.2",
+    "@opentui/core": "^0.5.10",
+    "@opentui/react": "^0.5.10",
+    "effect": "^3.22.1",
+    "react": "^19.2.8",
+    "supermemory": "^4.25.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.0",
+    "@types/react": "^19.2.18",
+    "typescript": "5.9.2"
+  }
+}
