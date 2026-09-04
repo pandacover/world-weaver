@@ -10,7 +10,7 @@ import { HarnessError } from "./harness.ts"
 export type UserIntent =
   | { readonly _tag: "chat"; readonly characterName: string | null; readonly text: string }
   | { readonly _tag: "act"; readonly text: string }
-  | { readonly _tag: "look" }
+  | { readonly _tag: "look"; readonly focus: string | null }
   | { readonly _tag: "continue" }
   | { readonly _tag: "info" }
 
@@ -20,7 +20,11 @@ export const parseInput = (
 ): UserIntent => {
   const line = raw.trim()
   if (!line) return { _tag: "info" }
-  if (line === "/look" || line.startsWith("/look ")) return { _tag: "look" }
+  if (line === "/look") return { _tag: "look", focus: null }
+  if (line.startsWith("/look ")) {
+    const focus = line.slice(6).trim()
+    return { _tag: "look", focus: focus.length > 0 ? focus : null }
+  }
   if (line === "/continue") return { _tag: "continue" }
   if (line === "/info") return { _tag: "info" }
   if (line.startsWith("/act ")) {
@@ -214,9 +218,12 @@ export class AgentLoop extends Effect.Service<AgentLoop>()(
               pending,
             )
           } else if (intent._tag === "look") {
+            const focusBit = intent.focus
+              ? ` Focus attention on "${intent.focus}" if present.`
+              : ""
             yield* runDirectorTurn(
               snapshot,
-              "Describe what the player sees in the current scene.",
+              `Describe what the player sees in the current scene.${focusBit}`,
               pending,
             )
           } else if (intent._tag === "continue") {

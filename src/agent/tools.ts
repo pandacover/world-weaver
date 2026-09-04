@@ -1,12 +1,13 @@
 import { Schema } from "effect"
 import { Tool, Toolkit } from "@effect/ai"
-import { ScenePatch } from "../domain/schema.ts"
 
 export const Speak = Tool.make("Speak", {
   description: "Speak in-character dialogue aloud in the scene.",
   parameters: {
-    characterId: Schema.String,
-    line: Schema.String,
+    characterId: Schema.String.annotations({
+      description: "ID of the speaking character from the cast list",
+    }),
+    line: Schema.String.annotations({ description: "Dialogue line" }),
   },
   success: Schema.Struct({ ok: Schema.Literal(true) }),
 })
@@ -29,11 +30,14 @@ export const Observe = Tool.make("Observe", {
   success: Schema.Struct({ ok: Schema.Literal(true) }),
 })
 
+/** Flat params — nested `patch` objects often break OpenAI-compatible tool decoding. */
 export const MutateScene = Tool.make("MutateScene", {
   description:
-    "Propose a structured scene update (location, summary, who is present).",
+    "Propose a structured scene update (location, summary, who is present). Omit fields you are not changing.",
   parameters: {
-    patch: ScenePatch,
+    location: Schema.optional(Schema.String),
+    summary: Schema.optional(Schema.String),
+    presentCharacterIds: Schema.optional(Schema.Array(Schema.String)),
   },
   success: Schema.Struct({ ok: Schema.Literal(true) }),
 })
@@ -44,5 +48,9 @@ export type PendingTurn = {
   dialogues: Array<{ characterId: string; line: string }>
   narrations: Array<string>
   memories: Array<{ characterId: string; memory: string }>
-  scenePatch: Schema.Schema.Type<typeof ScenePatch> | null
+  scenePatch: {
+    location?: string
+    summary?: string
+    presentCharacterIds?: ReadonlyArray<string>
+  } | null
 }

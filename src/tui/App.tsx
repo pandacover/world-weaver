@@ -124,9 +124,14 @@ export function App({ runtime }: AppProps) {
         }
         setStatus("Ready")
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
+        const msg =
+          e && typeof e === "object" && "description" in e
+            ? `${(e as { _tag?: string })._tag ?? "Error"}: ${String((e as { description: unknown }).description)}`
+            : e instanceof Error
+              ? e.message
+              : String(e)
         setLog((prev) => [...prev, `! ${msg}`])
-        setStatus(`Error: ${msg}`)
+        setStatus(`Error: ${msg.slice(0, 80)}`)
       } finally {
         setBusy(false)
       }
@@ -149,9 +154,9 @@ export function App({ runtime }: AppProps) {
       padding={1}
       backgroundColor="#0f1419"
     >
-      <box height={1} marginBottom={1} flexDirection="row" gap={2}>
+      <box height={1} marginBottom={1} flexDirection="row" gap={2} flexShrink={0}>
         <text fg="#c4a35a">WORLD WEAVER</text>
-        <text fg="#6b7280">{status}</text>
+        <text fg="#6b7280">— {status}</text>
       </box>
 
       {screen === "home" && (

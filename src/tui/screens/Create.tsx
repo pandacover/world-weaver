@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useKeyboard } from "@opentui/react"
+import type { InputRenderable, TextareaRenderable } from "@opentui/core"
 import type { CreateNovelInput } from "../../domain/schema.ts"
 
 export type CreateScreenProps = {
@@ -27,6 +28,8 @@ const fields: Field[] = [
   "summary",
 ]
 
+const multiline = new Set<Field>(["premise", "tone", "summary"])
+
 const labels: Record<Field, string> = {
   title: "Title",
   premise: "Premise / world",
@@ -37,21 +40,75 @@ const labels: Record<Field, string> = {
   summary: "Opening scene summary",
 }
 
+const defaults: Record<Field, string> = {
+  title: "Ash Harbor",
+  premise: "A fog-bound port town where debts are paid in secrets.",
+  tone: "noir literary, grounded, no comedy slapstick",
+  playerName: "Mara",
+  npcName: "Corvin",
+  location: "Harbor quay",
+  summary:
+    "Rain needles the quay. Lanterns smear gold across black water. Corvin waits by a mooring post.",
+}
+
 export function CreateScreen({ busy, onCancel, onSubmit }: CreateScreenProps) {
   const [index, setIndex] = useState(0)
-  const [values, setValues] = useState<Record<Field, string>>({
-    title: "Ash Harbor",
-    premise: "A fog-bound port town where debts are paid in secrets.",
-    tone: "noir literary, grounded, no comedy slapstick",
-    playerName: "Mara",
-    npcName: "Corvin",
-    location: "Harbor quay",
-    summary:
-      "Rain needles the quay. Lanterns smear gold across black water. Corvin waits by a mooring post.",
-  })
-  const [draft, setDraft] = useState(values[fields[0]!])
+  const [values, setValues] = useState<Record<Field, string>>(defaults)
+  const inputRefs = useRef<Partial<Record<Field, InputRenderable | null>>>({})
+  const textareaRefs = useRef<Partial<Record<Field, TextareaRenderable | null>>>({})
 
   const field = fields[index]!
+
+  const readField = (f: Field): string => {
+    if (multiline.has(f)) {
+      return textareaRefs.current[f]?.plainText ?? values[f]
+    }
+    return inputRefs.current[f]?.value ?? values[f]
+  }
+
+  const syncCurrent = (): Record<Field, string> => {
+    const next = { ...values, [field]: readField(field) }
+    setValues(next)
+    return next
+  }
+
+  const goTo = (nextIndex: number) => {
+    const synced = syncCurrent()
+    const clamped = Math.max(0, Math.min(nextIndex, fields.length - 1))
+    setIndex(clamped)
+    // keep values in state for unfocused display
+    setValues(synced)
+  }
+
+  const submit = () => {
+    const finalValues = syncCurrent()
+    onSubmit({
+      title: finalValues.title.trim() || "Untitled",
+      premise: finalValues.premise.trim(),
+      boundaries: {
+        tone: finalValues.tone.trim() || undefined,
+        settingRules: ["Stay consistent with established facts"],
+        hardRejects: ["Do not break the fourth wall", "No modern anachronisms"],
+        allowedLocations: undefined,
+      },
+      player: {
+        name: finalValues.playerName.trim() || "Player",
+        personalityTraits: ["curious", "cautious"],
+        physicalTraits: ["travel-worn coat"],
+      },
+      npcs: [
+        {
+          name: finalValues.npcName.trim() || "Guide",
+          personalityTraits: ["wry", "observant"],
+          physicalTraits: ["scarred hands", "oilskin cloak"],
+          voiceNotes: "Speaks in short, dry sentences.",
+        },
+      ],
+      openingLocation: finalValues.location.trim() || "Somewhere",
+      openingSummary: finalValues.summary.trim() || "The story begins.",
+      chapterTitle: "Chapter 1",
+    })
+  }
 
   useKeyboard((key) => {
     if (busy) return
@@ -59,89 +116,101 @@ export function CreateScreen({ busy, onCancel, onSubmit }: CreateScreenProps) {
       onCancel()
       return
     }
-    if (key.name === "tab" || key.name === "down") {
-      const nextValues = { ...values, [field]: draft }
-      setValues(nextValues)
-      const next = Math.min(index + 1, fields.length - 1)
-      setIndex(next)
-      setDraft(nextValues[fields[next]!])
+    if (key.name === "tab" && !key.shift) {
+      key.preventDefault()
+      if (index >= fields.length - 1) submit()
+      else goTo(index + 1)
       return
     }
-    if (key.name === "up") {
-      const nextValues = { ...values, [field]: draft }
-      setValues(nextValues)
-      const next = Math.max(index - 1, 0)
-      setIndex(next)
-      setDraft(nextValues[fields[next]!])
+    if (key.name === "tab" && key.shift) {
+      key.preventDefault()
+      goTo(index - 1)
       return
     }
-    if (key.name === "return") {
-      const finalValues = { ...values, [field]: draft }
-      setValues(finalValues)
-      if (index < fields.length - 1) {
-        const next = index + 1
-        setIndex(next)
-        setDraft(finalValues[fields[next]!])
-        return
-      }
-      onSubmit({
-        title: finalValues.title.trim() || "Untitled",
-        premise: finalValues.premise.trim(),
-        boundaries: {
-          tone: finalValues.tone.trim() || undefined,
-          settingRules: ["Stay consistent with established facts"],
-          hardRejects: ["Do not break the fourth wall", "No modern anachronisms"],
-          allowedLocations: undefined,
-        },
-        player: {
-          name: finalValues.playerName.trim() || "Player",
-          personalityTraits: ["curious", "cautious"],
-          physicalTraits: ["travel-worn coat"],
-        },
-        npcs: [
-          {
-            name: finalValues.npcName.trim() || "Guide",
-            personalityTraits: ["wry", "observant"],
-            physicalTraits: ["scarred hands", "oilskin cloak"],
-            voiceNotes: "Speaks in short, dry sentences.",
-          },
-        ],
-        openingLocation: finalValues.location.trim() || "Somewhere",
-        openingSummary:
-          finalValues.summary.trim() || "The story begins.",
-        chapterTitle: "Chapter 1",
-      })
-      return
-    }
-    if (key.name === "backspace") {
-      setDraft((d) => d.slice(0, -1))
-      return
-    }
-    if (key.sequence && key.sequence.length === 1 && !key.ctrl && !key.meta) {
-      setDraft((d) => d + key.sequence)
+    // Ctrl+Enter submits from any field / advances
+    if (key.name === "return" && key.ctrl) {
+      key.preventDefault()
+      if (index >= fields.length - 1) submit()
+      else goTo(index + 1)
     }
   })
 
   return (
     <box flexGrow={1} flexDirection="column" gap={1}>
-      <text fg="#c4a35a">Create novel</text>
-      <text fg="#9ca3af">
-        Tab/Enter next field · Enter on last field creates · Esc cancel
-      </text>
+      <box flexDirection="column" gap={0}>
+        <text fg="#c4a35a">Create novel</text>
+        <text fg="#9ca3af">
+          Tab next · Shift+Tab back · Enter advances single-line · newlines OK in
+          multi-line · Ctrl+Enter next/create · Esc cancel
+        </text>
+      </box>
 
-      {fields.map((f, i) => (
-        <box key={f} flexDirection="column">
-          <text fg={i === index ? "#93c5fd" : "#6b7280"}>
-            {i === index ? ">" : " "} {labels[f]}
-          </text>
-          <text fg={i === index ? "#f3f4f6" : "#9ca3af"}>
-            {i === index ? draft : values[f]}
-            {i === index ? "█" : ""}
-          </text>
+      <scrollbox flexGrow={1} stickyScroll={false} focused={false}>
+        <box flexDirection="column" gap={1} paddingRight={1}>
+          {fields.map((f, i) => {
+            const active = i === index
+            const isMulti = multiline.has(f)
+            return (
+              <box
+                key={f}
+                flexDirection="column"
+                border
+                borderColor={active ? "#60a5fa" : "#374151"}
+                padding={1}
+                backgroundColor={active ? "#111827" : "#0f1419"}
+              >
+                <text fg={active ? "#93c5fd" : "#9ca3af"}>
+                  {active ? "› " : "  "}
+                  {labels[f]}
+                  {isMulti ? " (multi-line)" : ""}
+                </text>
+                {isMulti ? (
+                  <textarea
+                    ref={(node) => {
+                      textareaRefs.current[f] = node
+                    }}
+                    initialValue={values[f]}
+                    focused={active && !busy}
+                    height={4}
+                    wrapMode="word"
+                    onContentChange={() => {
+                      const node = textareaRefs.current[f]
+                      if (node) {
+                        setValues((prev) => ({ ...prev, [f]: node.plainText }))
+                      }
+                    }}
+                  />
+                ) : (
+                  <input
+                    ref={(node) => {
+                      inputRefs.current[f] = node
+                    }}
+                    value={values[f]}
+                    focused={active && !busy}
+                    placeholder={labels[f]}
+                    onChange={(value) =>
+                      setValues((prev) => ({ ...prev, [f]: value }))
+                    }
+                    onSubmit={() => {
+                      if (index >= fields.length - 1) submit()
+                      else goTo(index + 1)
+                    }}
+                  />
+                )}
+              </box>
+            )
+          })}
         </box>
-      ))}
+      </scrollbox>
 
-      {busy && <text fg="#c4a35a">Creating…</text>}
+      {busy ? (
+        <text fg="#c4a35a">Creating…</text>
+      ) : (
+        <text fg="#6b7280">
+          Field {index + 1}/{fields.length}
+          {index === fields.length - 1 ? " — Tab or Ctrl+Enter to create" : ""}
+        </text>
+      )}
     </box>
   )
 }

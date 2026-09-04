@@ -92,6 +92,7 @@ const program = Effect.gen(function* () {
   // Intent parsing
   console.log("parse @Corvin:", parseInput("@Corvin What do you want?", null))
   console.log("parse /look:", parseInput("/look", "Corvin"))
+  console.log("parse /look character:", parseInput("/look character", null))
   console.log("parse /continue:", parseInput("/continue", null))
 
   // Provider adapter constructs without throwing
