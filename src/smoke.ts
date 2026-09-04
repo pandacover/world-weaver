@@ -9,6 +9,7 @@ import { AppConfig } from "./config.ts"
 import { layer as dbLayer } from "./store/db.ts"
 import { NovelStore } from "./store/novel-store.ts"
 import { resolveProviderLayer } from "./llm/provider.ts"
+import { sanitizeReasoningEffortJson } from "./llm/sanitize-response.ts"
 import { parseInput } from "./agent/loop.ts"
 import { softBoundaryPrompt, validateScenePatch } from "./agent/harness.ts"
 import type { NovelSnapshot } from "./domain/schema.ts"
@@ -125,6 +126,19 @@ const program = Effect.gen(function* () {
     openRouterXTitle: "",
   })
   console.log("openai-compatible layer ok:", Boolean(compatLayer))
+
+  const before = JSON.stringify({
+    id: "resp",
+    reasoning: { effort: "max", summary: null },
+  })
+  const after = sanitizeReasoningEffortJson(before)
+  const parsed = JSON.parse(after) as { reasoning: { effort: string } }
+  if (parsed.reasoning.effort !== "high") {
+    return yield* Effect.fail(
+      new Error(`expected effort high, got ${parsed.reasoning.effort}`),
+    )
+  }
+  console.log("reasoning effort sanitize ok:", parsed.reasoning.effort)
 
   // unused typed snapshot reference for compile confidence
   const _s: NovelSnapshot = snap

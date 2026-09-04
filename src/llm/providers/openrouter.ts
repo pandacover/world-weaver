@@ -3,6 +3,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform
 import type { LanguageModel } from "@effect/ai/LanguageModel"
 import { Layer, Redacted } from "effect"
 import type { ProviderConfig } from "../provider.ts"
+import { withReasoningEffortSanitizer } from "../sanitize-response.ts"
 
 export const openrouterLayer = (
   config: ProviderConfig,
@@ -14,10 +15,12 @@ export const openrouterLayer = (
     apiKey: config.apiKey ? Redacted.make(config.apiKey) : undefined,
     apiUrl: "https://openrouter.ai/api/v1",
     transformClient: (httpClient) =>
-      HttpClient.mapRequest(httpClient, (request) =>
-        request.pipe(
-          HttpClientRequest.setHeader("HTTP-Referer", referer),
-          HttpClientRequest.setHeader("X-Title", title),
+      withReasoningEffortSanitizer(
+        HttpClient.mapRequest(httpClient, (request) =>
+          request.pipe(
+            HttpClientRequest.setHeader("HTTP-Referer", referer),
+            HttpClientRequest.setHeader("X-Title", title),
+          ),
         ),
       ),
   }).pipe(Layer.provide(FetchHttpClient.layer))
