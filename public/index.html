@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Weaver — Short Film Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="glow" aria-hidden="true"></div>
+
+    <main>
+      <section class="hero" id="compose">
+        <p class="brand">World Weaver</p>
+        <h1>Spin a premise into a short film.</h1>
+        <p class="lede">
+          OpenRouter writes the screenplay, renders each scene, and plays the cut.
+        </p>
+
+        <form id="film-form" class="compose">
+          <label class="field premise-field">
+            <span>Premise</span>
+            <textarea
+              id="premise"
+              name="premise"
+              rows="3"
+              required
+              placeholder="A lighthouse keeper discovers the sea has started answering back…"
+            ></textarea>
+          </label>
+
+          <div class="row">
+            <label class="field">
+              <span>Style note</span>
+              <input
+                id="style"
+                name="style"
+                type="text"
+                placeholder="neon noir, handheld, rain-soaked"
+              />
+            </label>
+            <label class="field">
+              <span>Scenes</span>
+              <select id="sceneCount" name="sceneCount">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Media</span>
+              <select id="mediaMode" name="mediaMode">
+                <option value="video" selected>Video clips</option>
+                <option value="stills">Stills</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>OpenRouter API key <em>(optional if set on server)</em></span>
+            <input
+              id="apiKey"
+              name="apiKey"
+              type="password"
+              autocomplete="off"
+              placeholder="sk-or-…"
+            />
+          </label>
+
+          <div class="actions">
+            <button type="submit" class="cta" id="generate">
+              Generate short film
+            </button>
+            <p class="hint" id="key-hint"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="stage" id="stage" hidden>
+        <header class="stage-head">
+          <p class="brand brand-sm">World Weaver</p>
+          <h2 id="film-title">Generating…</h2>
+          <p id="film-logline" class="lede lede-sm"></p>
+        </header>
+
+        <ol class="progress" id="progress" aria-live="polite"></ol>
+
+        <div class="cinema" id="cinema" hidden>
+          <div class="screen" id="screen">
+            <video id="player-video" playsinline></video>
+            <img id="player-image" alt="" />
+            <div class="caption" id="caption"></div>
+          </div>
+          <div class="transport">
+            <button type="button" id="prev" aria-label="Previous scene">◀</button>
+            <button type="button" id="play" aria-label="Play or pause">Play</button>
+            <button type="button" id="next" aria-label="Next scene">▶</button>
+            <div class="scene-dots" id="scene-dots"></div>
+          </div>
+        </div>
+
+        <p class="error" id="error" hidden></p>
+        <button type="button" class="ghost" id="again" hidden>New premise</button>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
